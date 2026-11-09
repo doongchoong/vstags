@@ -1,0 +1,88 @@
+/* emp.pc - Pro*C 샘플 */
+#include <string.h>
+#include "common.h"
+
+EXEC SQL INCLUDE sqlca;
+EXEC SQL INCLUDE "common.h";
+
+EXEC SQL BEGIN DECLARE SECTION;
+    VARCHAR  h_ename[MAX_NAME];
+    int      h_empno;
+    double   h_sal;
+    short    h_ind;
+    char     h_query[512];
+EXEC SQL END DECLARE SECTION;
+
+int g_debug = 0;
+EmpList g_emps;
+
+static void sql_error(const char *msg)
+{
+    EXEC SQL WHENEVER SQLERROR CONTINUE;
+    LOG_ERR("sql error %s: %.70s", msg, sqlca.sqlerrm.sqlerrmc);
+    EXEC SQL ROLLBACK WORK RELEASE;
+}
+
+EXEC SQL DECLARE emp_cur CURSOR FOR
+    SELECT empno, ename, sal
+      FROM emp
+     WHERE deptno = :h_empno   -- 주석; 세미콜론
+       AND ename <> 'O''Brien;';
+
+int load_emps(EmpList *list, int deptno)
+{
+    int     n = 0;
+    EmpRec *rec;
+    struct dept_rec dept;
+
+    EXEC SQL WHENEVER SQLERROR DO sql_error("load_emps");
+    EXEC SQL WHENEVER NOT FOUND GOTO done;
+
+    h_empno = deptno;
+    EXEC SQL OPEN emp_cur;
+    for (;;) {
+        EXEC SQL FETCH emp_cur INTO :h_empno, :h_ename:h_ind, :h_sal;
+        rec = &list->items[n++];
+        rec->empno = h_empno;
+        memcpy(rec->ename, h_ename.arr, h_ename.len);
+        rec->ename[h_ename.len] = '\0';
+        rec->sal = h_sal;
+        rec->dept = &dept;
+        rec->on_change(rec, 1);
+        if (g_debug)
+            log_write(LOG_LEVEL_DBG, __FILE__, __LINE__, "emp %d", rec->empno);
+    }
+done:
+    EXEC SQL CLOSE emp_cur;
+    list->count = n;
+
+    EXEC SQL EXECUTE
+        BEGIN
+            update_stats(:h_empno);
+            IF :h_sal > 0 THEN
+                NULL;
+            END IF;
+        END;
+    END-EXEC;
+
+    return n;
+}
+
+int raise_sal(int empno, double pct)
+{
+    EXEC SQL UPDATE emp SET sal = sal * (1 + :pct / 100)
+              WHERE empno = :empno;
+    if (!SQL_OK()) {
+        sql_error("raise_sal");
+        return -1;
+    }
+    EXEC SQL COMMIT WORK;
+    return 0;
+}
+
+int dyn_exec(void)
+{
+    EXEC SQL EXECUTE stmt1 USING :h_empno;
+    EXEC SQL EXECUTE BEGIN do_it(:h_sal); END; END-EXEC;
+    return 0;
+}

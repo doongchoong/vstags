@@ -1,0 +1,60 @@
+{
+  "name": "Pro*C",
+  "scopeName": "source.proc",
+  "patterns": [
+    { "include": "#exec-plsql" },
+    { "include": "#exec-sql" },
+    { "include": "source.c" }
+  ],
+  "injections": {
+    "L:source.proc -comment -string -meta.embedded.block.sql": {
+      "patterns": [
+        { "include": "#exec-plsql" },
+        { "include": "#exec-sql" }
+      ]
+    }
+  },
+  "repository": {
+    "exec-plsql": {
+      "begin": "(?i)\\b(EXEC)\\s+(SQL)\\s+(EXECUTE)\\b(?=\\s+(?:BEGIN|DECLARE)\\b|\\s*$)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.directive.proc" },
+        "2": { "name": "keyword.control.directive.proc" },
+        "3": { "name": "keyword.other.sql" }
+      },
+      "end": "(?i)\\b(END-EXEC)\\s*(;)",
+      "endCaptures": {
+        "1": { "name": "keyword.control.directive.proc" },
+        "2": { "name": "punctuation.terminator.statement.proc" }
+      },
+      "contentName": "meta.embedded.block.sql",
+      "patterns": [
+        { "include": "#host-variable" },
+        { "include": "source.sql" }
+      ]
+    },
+    "exec-sql": {
+      "begin": "(?i)\\b(EXEC)\\s+(SQL|ORACLE|TOOLS|IAF)\\b",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.directive.proc" },
+        "2": { "name": "keyword.control.directive.proc" }
+      },
+      "end": "(;)",
+      "endCaptures": {
+        "1": { "name": "punctuation.terminator.statement.proc" }
+      },
+      "contentName": "meta.embedded.block.sql",
+      "patterns": [
+        { "include": "#host-variable" },
+        { "include": "source.sql" }
+      ]
+    },
+    "host-variable": {
+      "match": "(:)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.proc" },
+        "2": { "name": "variable.other.host.proc" }
+      }
+    }
+  }
+}

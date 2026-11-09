@@ -1,0 +1,6 @@
+node_modules/
+out/
+*.vsix
+.vstags/
+# 릴리스된 vsix 는 버전별로 보관
+!release/*.vsix

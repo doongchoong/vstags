@@ -1,0 +1,557 @@
+{
+  "name": "vstags",
+  "displayName": "vstags - C / Pro*C Code Navigator",
+  "description": "ctags + cscope 스타일의 C / Pro*C(.pc) 심볼 인덱서. 정의 이동, 참조/호출자 찾기, Call Hierarchy, Outline 등을 language server 수준으로 제공합니다.",
+  "version": "0.6.3",
+  "publisher": "local",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doongchoong/vstags.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "c",
+    "proc",
+    "pro*c",
+    "ctags",
+    "cscope",
+    "oracle"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/*.{c,h,pc,pcc}",
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onLanguage:proc",
+    "onDebugResolve:vstags-sim"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "proc",
+        "aliases": [
+          "Pro*C",
+          "proc"
+        ],
+        "extensions": [
+          ".pc",
+          ".pcc"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "proc",
+        "scopeName": "source.proc",
+        "path": "./syntaxes/proc.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.sql": "sql"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "vstags.rebuildIndex",
+        "title": "Rebuild Index (전체 재색인)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.sync",
+        "title": "Sync Index (변경된 파일만 반영)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.showStatus",
+        "title": "Show Index Status",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.searchSymbol",
+        "title": "Search Symbol (종류별 태그 검색)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.findCallers",
+        "title": "Find Callers (이 함수를 호출하는 곳)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.findCallees",
+        "title": "Find Callees (이 함수가 호출하는 함수)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.findAssignments",
+        "title": "Find Assignments (이 심볼에 값을 대입하는 곳)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.findSqlHostUsages",
+        "title": "Find SQL Host Variable Usages (EXEC SQL 내 :var 사용처)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.findIncluders",
+        "title": "Find Files #including This File",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.exportCtags",
+        "title": "Export ctags-compatible 'tags' file",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.sim.start",
+        "title": "Simulate Block (블록 시뮬레이션, 실험)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.sim.skip",
+        "title": "Skip Statement (이 문장 건너뛰기)",
+        "category": "vstags",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "vstags.sim.jumpToCursor",
+        "title": "Jump to Cursor (커서까지 건너뛰기)",
+        "category": "vstags"
+      },
+      {
+        "command": "vstags.sim.snapshot.save",
+        "title": "현재 변수값 저장 (스냅샷)",
+        "category": "vstags",
+        "icon": "$(save)"
+      },
+      {
+        "command": "vstags.sim.snapshot.apply",
+        "title": "변수값 적용 (스냅샷 덮어쓰기)",
+        "category": "vstags",
+        "icon": "$(check)"
+      },
+      {
+        "command": "vstags.sim.snapshot.open",
+        "title": "스냅샷 파일 열기",
+        "category": "vstags",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "vstags.sim.snapshot.delete",
+        "title": "스냅샷 삭제",
+        "category": "vstags",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "vstags.sim.snapshot.refresh",
+        "title": "새로 고침",
+        "category": "vstags",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "vstags.findCallers",
+          "when": "editorLangId =~ /^(c|cpp|proc)$/",
+          "group": "0_navigation@90"
+        },
+        {
+          "command": "vstags.findAssignments",
+          "when": "editorLangId =~ /^(c|cpp|proc)$/",
+          "group": "0_navigation@91"
+        },
+        {
+          "command": "vstags.sim.start",
+          "when": "config.vstags.simulator.enabled && editorLangId =~ /^(c|cpp|proc)$/",
+          "group": "0_navigation@99"
+        },
+        {
+          "command": "vstags.sim.jumpToCursor",
+          "when": "debugType == 'vstags-sim'",
+          "group": "0_navigation@98"
+        }
+      ],
+      "debug/toolbar": [
+        {
+          "command": "vstags.sim.skip",
+          "when": "debugType == 'vstags-sim'"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "vstags.sim.start",
+          "when": "config.vstags.simulator.enabled"
+        },
+        {
+          "command": "vstags.sim.skip",
+          "when": "debugType == 'vstags-sim'"
+        },
+        {
+          "command": "vstags.sim.jumpToCursor",
+          "when": "debugType == 'vstags-sim'"
+        },
+        {
+          "command": "vstags.sim.snapshot.save",
+          "when": "debugType == 'vstags-sim'"
+        },
+        {
+          "command": "vstags.sim.snapshot.apply",
+          "when": "debugType == 'vstags-sim'"
+        },
+        {
+          "command": "vstags.sim.snapshot.open",
+          "when": "false"
+        },
+        {
+          "command": "vstags.sim.snapshot.delete",
+          "when": "false"
+        },
+        {
+          "command": "vstags.sim.snapshot.refresh",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "vstags.sim.snapshot.save",
+          "when": "view == vstags.snapshots",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vstags.sim.snapshot.refresh",
+          "when": "view == vstags.snapshots",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "vstags.sim.snapshot.apply",
+          "when": "view == vstags.snapshots && viewItem == snapshot",
+          "group": "inline@1"
+        },
+        {
+          "command": "vstags.sim.snapshot.open",
+          "when": "view == vstags.snapshots && viewItem == snapshot",
+          "group": "inline@2"
+        },
+        {
+          "command": "vstags.sim.snapshot.delete",
+          "when": "view == vstags.snapshots && viewItem == snapshot",
+          "group": "inline@3"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vstags.findCallers",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
+        "when": "editorTextFocus && editorLangId =~ /^(c|cpp|proc)$/"
+      },
+      {
+        "command": "vstags.searchSymbol",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t"
+      }
+    ],
+    "configuration": {
+      "title": "vstags",
+      "properties": {
+        "vstags.include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.c",
+            "**/*.h",
+            "**/*.pc",
+            "**/*.pcc"
+          ],
+          "description": "색인할 파일 glob 패턴."
+        },
+        "vstags.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/.git/**",
+            "**/node_modules/**",
+            "**/.vstags/**"
+          ],
+          "description": "색인에서 제외할 glob 패턴 (files.exclude / search.exclude 도 함께 적용됨)."
+        },
+        "vstags.encoding": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "cp949",
+            "utf-8"
+          ],
+          "enumDescriptions": [
+            "올바른 UTF-8 이면 UTF-8, 아니면 vstags.fallbackEncoding",
+            "항상 CP949 (EUC-KR + 확장 완성형). UTF-8 판별을 건너뜀",
+            "항상 UTF-8"
+          ],
+          "description": "소스 파일 인코딩. 변경하면 전체 재색인합니다. VSCode 의 files.encoding 과 같게 맞추세요 (CP949 소스라면 \"windows949\")."
+        },
+        "vstags.fallbackEncoding": {
+          "type": "string",
+          "default": "cp949",
+          "description": "vstags.encoding 이 auto 일 때 UTF-8 이 아닌 파일에 쓸 인코딩. cp949/euc-kr 은 확장 완성형(똠, 갂 등)까지 처리하는 내장 디코더를 사용합니다."
+        },
+        "vstags.maxFileSizeKB": {
+          "type": "number",
+          "default": 4096,
+          "description": "이 크기(KB)보다 큰 파일은 색인하지 않습니다."
+        },
+        "vstags.workers": {
+          "type": "number",
+          "default": 0,
+          "description": "색인에 사용할 워커 스레드 수. 0 이면 CPU 코어 수에 맞춰 자동."
+        },
+        "vstags.enableCompletion": {
+          "type": "boolean",
+          "default": true,
+          "description": "색인된 심볼로 자동완성을 제공합니다. C/C++ 확장과 함께 쓸 때 중복이 싫으면 끄세요."
+        },
+        "vstags.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "심볼 위에 마우스를 올리면 정의(시그니처/매크로 본문/구조체 멤버)를 보여줍니다."
+        },
+        "vstags.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "c",
+            "cpp",
+            "proc"
+          ],
+          "description": "vstags 기능(정의 이동, 참조, 호버 등)을 붙일 language id. VSCode 는 .h 를 C++(cpp) 로 여는 경우가 많아서 기본값에 cpp 포함. 바꾼 뒤에는 창을 다시 로드하세요."
+        },
+        "vstags.semanticHighlighting": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "all",
+            "off"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "Pro*C 는 항상, C 는 C/C++ 확장(cpptools)이 없을 때만",
+            "모든 대상 언어",
+            "끄기"
+          ],
+          "description": "색인 기반 시맨틱 하이라이트 (매크로/타입/열거자/전역변수/파라미터 구분)."
+        },
+        "vstags.callHierarchy.includeFunctionPointers": {
+          "type": "boolean",
+          "default": true,
+          "description": "호출자(Call Hierarchy / Find Callers)에 직접 호출뿐 아니라 함수 이름이 값으로 쓰인 곳(함수 포인터 테이블 등록, 콜백 전달)도 포함."
+        },
+        "vstags.syncOnFocus": {
+          "type": "boolean",
+          "default": true,
+          "description": "VSCode 창으로 돌아올 때 변경된 파일을 확인해서 반영합니다 (최소 10초 간격). 네트워크 드라이브처럼 파일 감시가 안 되는 환경용."
+        },
+        "vstags.simulator.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "[실험] 블록 시뮬레이터. 함수 안의 블록을 선택하고 우클릭 → Simulate Block. 변수에 값을 넣으며 한 문장씩 진행하고, 모르는 값이 필요하면 멈춥니다. Pro*C SQL 은 실행하지 않고 결과(sqlcode, INTO 값)를 가정합니다."
+        },
+        "vstags.simulator.ignore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "[실험] 블록 시뮬레이터에서 묻지 않고 넘어갈 함수/매크로 이름. `*` `?` 와일드카드 사용 가능.\n\n- 매크로: `PRINT_STRUCT(x);` 같은 문장이 통째로 없어짐\n- 함수: 호출하지 않고 0 을 반환 (인자로 넘긴 값도 바꾸지 않음)\n\n예: `[\"PRINT_*\", \"TRACE_*\", \"log_*\"]`"
+        },
+        "vstags.simulator.logFunctions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "[실험] 블록 시뮬레이터에서 **printf 처럼 디버그 콘솔에 출력**할 회사 로깅 함수/매크로. 값은 출력 앞에 붙일 prefix 입니다.\n\n- `{fn}` 함수 이름, `{line}` 줄 번호로 바뀜\n- 포맷 문자열은 첫 문자열 인자를 자동으로 찾음. 이름 뒤 `:N` 으로 N 번째 인자를 지정 (예: `\"log_write:4\"`)\n- `*` `?` 와일드카드, 모르는 값은 `?` 로 출력하고 멈추지 않음, 반환값은 0\n\n예: `{ \"log_write\": \"[LOG] \", \"LOG_ERR\": \"[ERR {fn}:{line}] \" }`"
+        },
+        "vstags.simulator.types": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "[실험] 블록 시뮬레이터에서 쓸 **회사 타입 정의**: 이름 → C 타입. 색인의 typedef 보다 우선합니다.\n\n정의를 찾지 못한 타입은 크기를 가정하지 않고 넣은 값을 그대로 둡니다 (자르지 않음). 정수 나눗셈/넘침을 정확히 보려면 여기에 지정하세요.\n\n예: `{ \"int64\": \"long long\", \"uint64\": \"unsigned long long\", \"MONEY\": \"double\", \"MSG_PTR\": \"char *\" }`"
+        },
+        "vstags.lint.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "[실험] 코드 컨벤션 검사. 화면에 보이는 C / Pro*C 파일에 컨벤션 위반(접두어, sz/ac 크기, 전역 static, // 주석, sqlcode 확인 누락, 초기화 누락, 복사 크기 등)을 경고/정보로 표시합니다. 규칙 목록: docs/lint-plan.md"
+        },
+        "vstags.lint.rules": {
+          "type": "object",
+          "default": {},
+          "propertyNames": {
+            "enum": [
+              "comment-line",
+              "header-guard",
+              "prefix-type",
+              "sz-plus-one",
+              "ac-no-plus-one",
+              "global-static",
+              "global-prefix",
+              "no-extern",
+              "host-prefix",
+              "sql-include",
+              "camel-case",
+              "struct-typedef",
+              "typedef-suffix",
+              "struct-param-by-value",
+              "internal-static",
+              "static-local",
+              "if-assign",
+              "sqlcode-check",
+              "memset-size",
+              "uninit-local",
+              "copy-size"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "information",
+              "hint",
+              "off"
+            ]
+          },
+          "markdownDescription": "[실험] 코드 컨벤션 검사의 규칙별 심각도. 규칙 ID → `warning` / `information` / `hint` / `off`.\n\n기본: L1(접두어, `//` 주석, 헤더가드, 전역 static …)과 안전 검사(`sqlcode-check`, `memset-size`, `uninit-local`, `copy-size`)는 warning, L2(`camel-case`, `struct-typedef`, `internal-static` …)는 information.\n\n예: `{ \"camel-case\": \"off\", \"internal-static\": \"hint\" }`"
+        },
+        "vstags.lint.prefixes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "n": [
+              "int",
+              "int32"
+            ],
+            "o": [
+              "long",
+              "int64"
+            ],
+            "d": [
+              "double"
+            ],
+            "c": [
+              "char"
+            ],
+            "s": [
+              "short"
+            ],
+            "f": [
+              "float"
+            ],
+            "u": [
+              "unsigned"
+            ],
+            "t": [
+              "struct",
+              "union",
+              "VARCHAR"
+            ]
+          },
+          "markdownDescription": "[실험] 코드 컨벤션 검사의 접두어 → 타입 표. 타입은 기본 분류(`int` `long` `double` `char` `short` `float` `unsigned` `struct` `union` `VARCHAR`) 또는 typedef 이름. typedef 는 색인을 따라가므로 보통 기본 분류만 적으면 됩니다.\n\n`c`(char) 의 배열은 `sz`/`ac`, 배열은 `a`, 포인터는 `p` 가 앞에 붙습니다. 표에 없는 타입은 검사하지 않습니다."
+        },
+        "vstags.lint.sqlCheckNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "[실험] `sqlcode-check` 에서 sqlcode 확인으로 칠 매크로/함수 이름. `sqlca.sqlcode` 를 쓰는 매크로/함수는 색인으로 자동 인식되므로, 인식이 안 될 때만 적으세요."
+        }
+      }
+    },
+    "debuggers": [
+      {
+        "type": "vstags-sim",
+        "label": "vstags Block Simulation",
+        "languages": [
+          "c",
+          "cpp",
+          "proc"
+        ],
+        "when": "config.vstags.simulator.enabled",
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "시뮬레이션할 파일"
+              },
+              "startLine": {
+                "type": "number",
+                "description": "시작 줄 (0-based)"
+              },
+              "endLine": {
+                "type": "number",
+                "description": "끝 줄 (0-based, -1 이면 시작 문장부터 블록 끝까지)"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "views": {
+      "debug": [
+        {
+          "id": "vstags.snapshots",
+          "name": "vstags 변수값 모음",
+          "when": "debugType == 'vstags-sim'"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "vstags.snapshots",
+        "contents": "저장된 변수값이 없습니다.\n시뮬레이션이 멈춘 상태에서 지금까지 넣은 값을 이름 붙여 저장해 두면, 다음에 여기서 골라 한 번에 덮어쓸 수 있습니다.\n[현재 변수값 저장](command:vstags.sim.snapshot.save)"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test \"out/test/*.test.js\"",
+    "package": "vsce package --allow-missing-repository -o release/",
+    "release": "node scripts/release.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "tm-grammars": "^1.32.22",
+    "typescript": "~5.9.3",
+    "vscode-oniguruma": "^1.7.0",
+    "vscode-textmate": "^9.3.2"
+  }
+}

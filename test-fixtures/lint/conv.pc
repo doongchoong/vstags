@@ -1,0 +1,103 @@
+#include "conv.h"
+
+EXEC SQL INCLUDE SQLCA;
+
+static int32 g_nTotal = 0;
+int  nShared;
+extern int g_nOther;
+
+EXEC SQL BEGIN DECLARE SECTION;
+static char h_g_szAcnt[10 + 1];
+static char g_szNoHost[10 + 1];
+EXEC SQL END DECLARE SECTION;
+
+struct bare { int nA; };
+
+static int CheckSql(void)
+{
+    return sqlca.sqlcode == 0 ? 0 : -1;
+}
+
+static int32 Conv_Names(ConvIn_t tIn)
+{
+    int    nCnt = 0;
+    long   oSno = 0;
+    double dAmt = 0;
+    char   cYn = 'Y';
+    short  sLen = 0;
+    float  fRt = 0;
+    unsigned int uFlag = 0;
+    int64  oBig = 0;
+    char   szMsgCod[LEN_MSG_COD + 1];
+    char   szBad[21];
+    char   acFix[10 + 1];
+    char   acRaw[LEN_FILLER];
+    double adRt[8];
+    char  *pszP = NULL;
+    char  *pcYn = &cYn;
+    ConvIn_t *ptX = &tIn;
+    ConvIn_t  atList[3];
+    char   aszNames[3][10 + 1];
+    int    cnt = 0;
+    char   szAcnt[LEN_ACNT];
+    int    nBad_Name = 0;
+    static int g_nKeep = 0;
+    int    g_nWrong = 0;
+
+    return 0;
+}
+
+int32 Conv_Proc(ConvIn_t *ptIn, ConvOut *ptOut)
+{
+    ConvIn_t tA;
+    ConvIn_t tB;
+    ConvIn_t tC;
+    ConvOut  tOut = {0};
+    char     szBuf[20 + 1];
+    char     szTmp[20 + 1];
+    char     szSmall[5 + 1];
+    int      nRet = 0;
+
+    memset(&tA, 0x00, sizeof(tA));
+    INIT_ST(tB);
+    Conv_Names(tC);
+    memset(szBuf, 0x00, sizeof(szBuf));
+    strcpy(szTmp, "abc");
+    memset(ptIn, 0x00, sizeof(ptIn));
+    memset(&tA, 0x00, sizeof(tB));
+    memset(ptOut, 0x00, sizeof(*ptOut));
+
+    szSmall[0] = 0x00;
+    strcpy(szSmall, "ABCDEF");
+    strcpy(szSmall, szBuf);
+    strncpy(szBuf, ptIn->szAcntNo, sizeof(szBuf));
+    memcpy(szSmall, szBuf, 10);
+    strcpy(tA.acFiller, szBuf);
+    strcpy(szBuf, ptIn->acFiller);
+    memcpy(tA.acFiller, szBuf, sizeof(tA.acFiller));
+    strcpy(szBuf, "한글");
+    strncpy(szBuf, ptIn->szAcntNo, sizeof(szBuf) - 1);
+
+    if (nRet = CheckSql())
+    {
+        return -1;
+    }
+
+    EXEC SQL SELECT COUNT(*) INTO :h_g_szAcnt FROM DUAL;
+    EXEC SQL UPDATE T SET A = 1;
+    if (DB_SQLCODE != 0) return -1;
+    EXEC SQL DELETE FROM T;
+    if (CheckSql() != 0) return -1;
+    EXEC SQL COMMIT WORK;
+    EXEC SQL WHENEVER SQLERROR GOTO err_exit;
+    EXEC SQL INSERT INTO T VALUES (1);
+    EXEC SQL WHENEVER SQLERROR CONTINUE;
+    return 0;
+err_exit:
+    return -1;
+}
+
+int Conv_NoHeader(void) // line comment
+{
+    return 0;
+}
